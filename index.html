@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leave Planner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='3' y='5' width='26' height='24' rx='5' fill='%232f6b4f'/><rect x='3' y='5' width='26' height='7' rx='3' fill='%231d4a35'/><circle cx='16' cy='20' r='4' fill='%23f4efe4'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span>Leave Planner</span>
+    </div>
+    <div class="who" id="who" hidden>
+      <span id="who-name"></span>
+      <span class="role-pill" id="who-role"></span>
+      <button class="btn ghost small" id="sign-out">Sign out</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- Setup notice when config.js is empty -->
+    <section class="card narrow" id="setup" hidden>
+      <h1>Almost there</h1>
+      <p>Add your Supabase project URL and anon key to <code>config.js</code>, then reload.</p>
+    </section>
+
+    <!-- Sign in / sign up -->
+    <section class="card narrow" id="auth" hidden>
+      <h1 id="auth-title">Sign in</h1>
+      <p class="muted" id="auth-sub">Plan time off and see who's away.</p>
+      <form id="auth-form" class="stack">
+        <label id="name-field" hidden>Full name
+          <input name="full_name" autocomplete="name">
+        </label>
+        <label>Email
+          <input name="email" type="email" required autocomplete="email">
+        </label>
+        <label>Password
+          <input name="password" type="password" required minlength="6" autocomplete="current-password">
+        </label>
+        <button class="btn primary" type="submit" id="auth-submit">Sign in</button>
+        <p class="msg" id="auth-msg" role="status"></p>
+      </form>
+      <p class="switch"><span id="auth-switch-text">New here?</span> <button class="link" id="auth-switch">Create an account</button></p>
+    </section>
+
+    <!-- Signed-in app -->
+    <section id="main" hidden>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="mine">My leave</button>
+        <button class="tab" data-tab="calendar">Team calendar</button>
+        <button class="tab manager-only" data-tab="approvals">Approvals <span class="count" id="pending-count"></span></button>
+        <button class="tab manager-only" data-tab="admin">Team &amp; holidays</button>
+      </nav>
+
+      <!-- My leave -->
+      <div class="panel" data-panel="mine">
+        <div class="stats" id="stats"></div>
+        <div class="grid-2">
+          <div class="card">
+            <h2>Request leave</h2>
+            <form id="request-form" class="stack">
+              <label>Type
+                <select name="leave_type">
+                  <option value="annual">Annual</option>
+                  <option value="sick">Sick</option>
+                  <option value="personal">Personal</option>
+                  <option value="unpaid">Unpaid</option>
+                </select>
+              </label>
+              <div class="row">
+                <label>From <input type="date" name="start_date" required></label>
+                <label>To <input type="date" name="end_date" required></label>
+              </div>
+              <label class="check"><input type="checkbox" name="half_day"> Half day (single date only)</label>
+              <label>Reason <span class="muted">(optional)</span>
+                <textarea name="reason" rows="2" maxlength="300"></textarea>
+              </label>
+              <p class="preview" id="days-preview"></p>
+              <button class="btn primary" type="submit">Submit request</button>
+              <p class="msg" id="request-msg" role="status"></p>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h2>My requests</h2>
+              <select id="year-filter" aria-label="Year"></select>
+            </div>
+            <div id="my-list" class="list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team calendar -->
+      <div class="panel" data-panel="calendar" hidden>
+        <div class="card">
+          <div class="card-head">
+            <button class="btn ghost small" id="prev-month" aria-label="Previous month">&larr;</button>
+            <h2 id="month-label"></h2>
+            <button class="btn ghost small" id="next-month" aria-label="Next month">&rarr;</button>
+          </div>
+          <div class="legend">
+            <span><i class="chip-swatch approved"></i>Approved</span>
+            <span><i class="chip-swatch pending"></i>Pending</span>
+            <span><i class="chip-swatch holiday"></i>Public holiday</span>
+          </div>
+          <div class="calendar" id="calendar"></div>
+        </div>
+      </div>
+
+      <!-- Approvals -->
+      <div class="panel" data-panel="approvals" hidden>
+        <div class="card">
+          <h2>Waiting for review</h2>
+          <div id="approval-list" class="list"></div>
+        </div>
+        <div class="card">
+          <h2>Recently reviewed</h2>
+          <div id="reviewed-list" class="list"></div>
+        </div>
+      </div>
+
+      <!-- Admin -->
+      <div class="panel" data-panel="admin" hidden>
+        <div class="grid-2">
+          <div class="card">
+            <h2>Team</h2>
+            <p class="muted">Annual allowance is in days per year. Make someone a manager to let them approve leave.</p>
+            <div class="table-wrap">
+              <table class="table" id="team-table">
+                <thead><tr><th>Name</th><th>Role</th><th>Allowance</th><th>Used</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Public holidays</h2>
+            <form id="holiday-form" class="row">
+              <label>Date <input type="date" name="holiday_date" required></label>
+              <label>Name <input name="name" required maxlength="60"></label>
+              <button class="btn primary" type="submit">Add</button>
+            </form>
+            <p class="msg" id="holiday-msg" role="status"></p>
+            <div id="holiday-list" class="list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>
